@@ -1,0 +1,120 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    char label[20], opcode[20], operand[20];
+    char code[20], mnemonic[20];
+    char line[100];
+    int locctr, start = 0, length;
+
+    FILE *input = fopen("input.txt", "r");
+    FILE *optab = fopen("optab.txt", "r");
+    FILE *symtab = fopen("symtab.txt", "w");
+    FILE *output = fopen("output.txt", "w");
+
+    if (!input || !optab || !symtab || !output) {
+        printf("Error opening files.\n");
+        if (input) fclose(input);
+        if (optab) fclose(optab);
+        if (symtab) fclose(symtab);
+        if (output) fclose(output);
+        return 1;
+    }
+
+    // Read first line
+    fgets(line, sizeof(line), input);
+    label[0] = opcode[0] = operand[0] = '\0';
+    int count = sscanf(line, "%s %s %s", label, opcode, operand);
+
+    if (strcmp(opcode, "START") == 0) {
+        start = (int)strtol(operand, NULL, 16);
+        locctr = start;
+        fprintf(output, "%04X\t%s\t%s\t%s\n", locctr, label, opcode, operand);
+    } else {
+        locctr = 0;
+        if (count == 1) {
+            strcpy(opcode, label);
+            strcpy(label, "-");
+            strcpy(operand, "-");
+        } else if (count == 2) {
+            strcpy(operand, opcode);
+            strcpy(opcode, label);
+            strcpy(label, "-");
+        }
+    }
+
+    // Process remaining lines
+    while (fgets(line, sizeof(line), input)) {
+
+        // Skip comment lines (lines starting with '.')
+        if (line[0] == '.') {
+            fprintf(output, "      %s", line);
+            continue;
+        }
+
+        label[0] = opcode[0] = operand[0] = '\0';
+        count = sscanf(line, "%s %s %s", label, opcode, operand);
+
+        if (count == 1) {
+            strcpy(opcode, label);
+            strcpy(label, "-");
+            strcpy(operand, "-");
+        } else if (count == 2) {
+            strcpy(operand, opcode);
+            strcpy(opcode, label);
+            strcpy(label, "-");
+        }
+
+        // Print line in output file
+        fprintf(output, "%04X\t%s\t%s\t%s\n", locctr, label, opcode, operand);
+
+        // Stop if END
+        if (strcmp(opcode, "END") == 0)
+            break;
+
+        // Add label to SYMTAB if it exists
+        if (strcmp(label, "-") != 0) {
+            fprintf(symtab, "%s\t%04X\n", label, locctr);
+        }
+
+        // Search for opcode in OPTAB
+        int found = 0;
+        rewind(optab);
+        while (fscanf(optab, "%s %s", code, mnemonic) != EOF) {
+            if (strcmp(opcode, code) == 0) {
+                locctr += 3;  // all SIC instructions are 3 bytes
+                found = 1;
+                break;
+            }
+        }
+
+        // If not found in OPTAB, check assembler directives
+        if (!found) {
+            if (strcmp(opcode, "WORD") == 0)
+                locctr += 3;
+            else if (strcmp(opcode, "RESW") == 0)
+                locctr += 3 * atoi(operand);
+            else if (strcmp(opcode, "RESB") == 0)
+                locctr += atoi(operand);
+            else if (strcmp(opcode, "BYTE") == 0) {
+                if (operand[0] == 'C')
+                    locctr += strlen(operand) - 3;  // length of constant
+                else if (operand[0] == 'X')
+                    locctr += (strlen(operand) - 3) / 2;
+            } else {
+                printf("Invalid opcode: %s\n", opcode);
+            }
+        }
+    }
+
+    length = locctr - start;
+    printf("Program length = %X (%d)\n", length, length);
+
+    fclose(input);
+    fclose(optab);
+    fclose(symtab);
+    fclose(output);
+
+    return 0;
+}
