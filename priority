@@ -1,0 +1,77 @@
+#include <stdio.h>
+
+int main() {
+    int n;
+    float avgwt = 0, avgtat = 0;
+    int TATsum = 0, WTsum = 0;
+
+    printf("Enter the number of processes: ");
+    scanf("%d", &n);
+
+    int BT[n + 1], WT[n + 1], TAT[n + 1], P[n + 1], prio[n + 1];
+
+    for (int i = 1; i <= n; i++) {
+        P[i] = i;
+    }
+
+    printf("\nEnter the burst time and priority for each process:\n");
+    for (int i = 1; i <= n; i++) {
+        printf("P%d Burst Time: ", i);
+        scanf("%d", &BT[i]);
+        printf("P%d Priority: ", i);
+        scanf("%d", &prio[i]);
+    }
+    for (int i = 1; i <= n - 1; i++) {
+        for (int j = 1; j <= n - i; j++) {
+            if (prio[j] > prio[j + 1]) {
+                int temp = prio[j];
+                prio[j] = prio[j + 1];
+                prio[j + 1] = temp;
+
+                temp = BT[j];
+                BT[j] = BT[j + 1];
+                BT[j + 1] = temp;
+
+                temp = P[j];
+                P[j] = P[j + 1];
+                P[j + 1] = temp;
+            }
+        }
+    }
+
+    WT[1] = 0;
+    for (int i = 2; i <= n; i++) {
+        WT[i] = WT[i - 1] + BT[i - 1];
+    }
+
+    for (int i = 1; i <= n; i++) {
+        TAT[i] = WT[i] + BT[i];
+        WTsum += WT[i];
+        TATsum += TAT[i];
+    }
+
+    avgwt = (float)WTsum / n;
+    avgtat = (float)TATsum / n;
+
+    printf("\nProcess\tBurstTime\tPriority\tWaitingTime\tTurnAroundTime\n");
+    for (int i = 1; i <= n; i++) {
+        printf("P%d\t\t%d\t\t%d\t\t%d\t\t%d\n", P[i], BT[i], prio[i], WT[i], TAT[i]);
+    }
+
+    printf("\nAverage Waiting Time: %.2f", avgwt);
+    printf("\nAverage Turnaround Time: %.2f\n", avgtat);
+
+    printf("\n\t--- GANTT CHART ---\n\n");
+    for (int i = 1; i <= n; i++) {
+        printf("|  P%d  ", P[i]);
+    }
+    printf("|\n");
+
+    printf("0");
+    for (int i = 1; i <= n; i++) {
+        printf("\t%d", WT[i] + BT[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
